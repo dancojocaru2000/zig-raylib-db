@@ -15,7 +15,10 @@ fn fetchThread(state: *AppState) !void {
     defer curl.deinit();
 
     while (state.departure_screen_state.fetch_thread != null) {
-        const fetch_anyway = state.departure_screen_state.should_refresh;
+        var fetch_anyway = state.departure_screen_state.should_refresh;
+        if (state.departure_screen_state.last_refresh_time + 60000 < std.time.milliTimestamp()) {
+            fetch_anyway = true;
+        }
         if (!fetch_anyway and std.mem.eql(u8, station_id_buf.slice(), state.departure_screen_state.station_id.items) and include_tram == state.departure_screen_state.include_tram) {
             std.time.sleep(100 * 1000);
             continue;
@@ -64,6 +67,7 @@ fn fetchThread(state: *AppState) !void {
         }
         state.departure_screen_state.fetch_result = parsed;
         state.departure_screen_state.should_refresh = false;
+        state.departure_screen_state.last_refresh_time = std.time.milliTimestamp();
     }
     if (state.departure_screen_state.fetch_result) |old_result| {
         old_result.deinit();

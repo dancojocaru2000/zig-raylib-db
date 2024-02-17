@@ -29,7 +29,7 @@ pub const DepartureScreenState = struct {
     platform: std.ArrayListUnmanaged(u8),
     departure_date: std.time.Instant,
     fetch_thread: ?std.Thread = null,
-    last_refresh_time: std.time.Instant = std.mem.zeroInit(std.time.Instant, .{}),
+    last_refresh_time: i64 = 0,
     fetch_result: ?std.json.Parsed(std.json.Value) = null,
     should_refresh: bool = false,
     max_next_trains: c_int = 5,
