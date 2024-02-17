@@ -29,7 +29,7 @@ fn fetchThread(state: *AppState) !void {
 
     while (state.departure_screen_state.fetch_thread != null) {
         var fetch_anyway = state.departure_screen_state.should_refresh;
-        if (state.departure_screen_state.last_refresh_time + 60000 < std.time.milliTimestamp()) {
+        if (state.departure_screen_state.last_refresh_time + 30000 < std.time.milliTimestamp()) {
             fetch_anyway = true;
         }
         if (!fetch_anyway and std.mem.eql(u8, station_id_buf.slice(), state.departure_screen_state.station_id.items) and include_tram == state.departure_screen_state.include_tram) {
