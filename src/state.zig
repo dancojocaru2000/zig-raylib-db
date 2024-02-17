@@ -25,6 +25,7 @@ pub const RenderStyle = enum(u8) {
 };
 
 pub const DepartureScreenState = struct {
+    mutex: std.Thread.Mutex = .{},
     station_id: std.ArrayListUnmanaged(u8),
     platform: std.ArrayListUnmanaged(u8),
     departure_date: std.time.Instant,

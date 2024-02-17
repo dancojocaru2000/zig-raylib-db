@@ -75,6 +75,8 @@ fn fetchThread(state: *AppState) !void {
             std.debug.print("[departure/fetchThread] JSON parse error: {}\n", .{err});
             continue;
         };
+        state.departure_screen_state.mutex.lock();
+        defer state.departure_screen_state.mutex.unlock();
         if (state.departure_screen_state.fetch_result) |old_result| {
             old_result.deinit();
         }
@@ -532,7 +534,9 @@ pub fn render(state: *AppState) !void {
             rl.KEY_MINUS, rl.KEY_KP_SUBTRACT => {
                 ds.max_next_trains = @max(1, ds.max_next_trains - 1);
             },
-            rl.KEY_EQUAL, rl.KEY_KP_EQUAL => {
+            rl.KEY_EQUAL, rl.KEY_KP_ADD => {
+                ds.mutex.lock();
+                defer ds.mutex.unlock();
                 ds.max_next_trains = @min(ds.max_next_trains + 1, if (ds.fetch_result) |fr| @as(c_int, @intCast(fr.value.object.get("departures").?.array.items.len)) else 5);
             },
             rl.KEY_T => {
@@ -551,9 +555,13 @@ pub fn render(state: *AppState) !void {
     rl.BeginDrawing();
     defer rl.EndDrawing();
 
-    switch (ds.render_style) {
-        .db1 => try draw_db1(state),
-        .ns => try draw_ns(state),
+    {
+        ds.mutex.lock();
+        defer ds.mutex.unlock();
+        switch (ds.render_style) {
+            .db1 => try draw_db1(state),
+            .ns => try draw_ns(state),
+        }
     }
 
     state.close_app = rl.WindowShouldClose();
