@@ -26,11 +26,9 @@ pub const DepartureScreenState = struct {
     loading: bool = false,
 };
 
-pub const AppState = struct {
-    allocator: std.mem.Allocator,
-    close_app: bool = false,
-    db_font: ?rl.Font = null,
-    screen: Screen = .home,
-    home_screen_state: HomeScreenState,
-    departure_screen_state: DepartureScreenState,
-};
+allocator: std.mem.Allocator,
+close_app: bool = false,
+db_font: ?rl.Font = null,
+screen: Screen = .home,
+home_screen_state: HomeScreenState,
+departure_screen_state: DepartureScreenState,

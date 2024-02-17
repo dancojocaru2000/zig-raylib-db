@@ -1,8 +1,8 @@
 const std = @import("std");
 const raylib = @import("raylib.zig");
 const rl = raylib.rl;
-const state_mod = @import("state.zig");
-const curl_mod = @import("curl.zig");
+const AppState = @import("state.zig");
+const Curl = @import("curl.zig");
 
 fn curlWriteHandler(ptr: [*]u8, size: usize, nmemb: usize, userdata: *std.ArrayList(u8)) callconv(.C) usize {
     _ = size;
@@ -10,13 +10,13 @@ fn curlWriteHandler(ptr: [*]u8, size: usize, nmemb: usize, userdata: *std.ArrayL
     return nmemb;
 }
 
-fn fetchThread(state: *state_mod.AppState) !void {
-    std.debug.print("Started fetchThread\n", .{});
-    defer std.debug.print("Ended fetchThread\n", .{});
+fn fetchThread(state: *AppState) !void {
+    std.debug.print("[home/fetchThread] Started\n", .{});
+    defer std.debug.print("[home/fetchThread] Ended\n", .{});
     defer state.home_screen_state.fetch_thread = null;
     const allocator = state.allocator;
     var station_name_buf = std.BoundedArray(u8, 200){};
-    var curl = curl_mod.init() orelse return;
+    var curl = Curl.init() orelse return;
     defer curl.deinit();
     const locations_base = "https://v6.db.transport.rest/locations";
     var locations_uri = std.Uri.parse(locations_base) catch unreachable;
@@ -30,7 +30,7 @@ fn fetchThread(state: *state_mod.AppState) !void {
         station_name_buf.resize(state.home_screen_state.station_name.items.len) catch continue;
         std.mem.copyForwards(u8, station_name_buf.slice(), state.home_screen_state.station_name.items);
 
-        std.debug.print("[fetchThread] Detected update: {s}\n", .{station_name_buf.slice()});
+        std.debug.print("[home/fetchThread] Detected update: {s}\n", .{station_name_buf.slice()});
 
         curl.reset();
 
@@ -38,7 +38,7 @@ fn fetchThread(state: *state_mod.AppState) !void {
         defer allocator.free(query);
         locations_uri.query = query;
         defer locations_uri.query = null;
-        std.debug.print("[fetchThread] Making request to: {}\n", .{locations_uri});
+        std.debug.print("[home/fetchThread] Making request to: {}\n", .{locations_uri});
 
         const url = try std.fmt.allocPrintZ(allocator, "{}", .{locations_uri});
         defer allocator.free(url);
@@ -50,17 +50,17 @@ fn fetchThread(state: *state_mod.AppState) !void {
         _ = curl.setopt(.write_data, .{&result});
 
         const code = curl.perform();
-        std.debug.print("[fetchThread] cURL Code: {}\n", .{code});
+        std.debug.print("[home/fetchThread] cURL Code: {}\n", .{code});
         if (code != 0) continue;
 
-        std.debug.print("[fetchThread] Fetched data: <redacted>(len: {})\n", .{result.items.len});
+        std.debug.print("[home/fetchThread] Fetched data: <redacted>(len: {})\n", .{result.items.len});
         const parsed = std.json.parseFromSlice([]const std.json.Value, allocator, result.items, .{}) catch |err| {
-            std.debug.print("[fetchThread] JSON parse error: {}\n", .{err});
+            std.debug.print("[home/fetchThread] JSON parse error: {}\n", .{err});
             continue;
         };
         defer parsed.deinit();
 
-        var results = std.ArrayList(state_mod.HSSuggestion).init(allocator);
+        var results = std.ArrayList(AppState.HSSuggestion).init(allocator);
         for (parsed.value) |station| {
             if (station.object.get("name")) |nameValue| {
                 const name = nameValue.string;
@@ -85,7 +85,7 @@ fn fetchThread(state: *state_mod.AppState) !void {
     }
 }
 
-pub fn render(state: *state_mod.AppState) !void {
+pub fn render(state: *AppState) !void {
     var hs = &state.home_screen_state;
 
     if (hs.fetch_thread == null) {

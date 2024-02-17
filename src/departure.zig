@@ -1,8 +1,8 @@
 const raylib = @import("raylib.zig");
 const rl = raylib.rl;
-const stateMod = @import("state.zig");
+const AppState = @import("state.zig");
 
-pub fn render(state: *stateMod.AppState) !void {
+pub fn render(state: *AppState) !void {
     while (raylib.GetKeyPressed()) |key| {
         switch (key) {
             rl.KEY_LEFT => {

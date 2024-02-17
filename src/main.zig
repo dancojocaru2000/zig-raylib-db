@@ -1,9 +1,9 @@
 const std = @import("std");
 const raylib = @import("raylib.zig");
 const rl = raylib.rl;
-const stateMod = @import("state.zig");
 const home = @import("home.zig");
 const departure = @import("departure.zig");
+const AppState = @import("state.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -25,7 +25,7 @@ pub fn main() !void {
     var station_name_buffer: [100]u8 = .{0} ** 100;
     var platform_buffer: [20]u8 = .{0} ** 20;
     var station_id_buffer: [10]u8 = .{0} ** 10;
-    var appState = stateMod.AppState{
+    var appState = AppState{
         .allocator = allocator,
         // .db_font = font,
         .home_screen_state = .{
