@@ -136,13 +136,9 @@ pub fn render(state: *AppState) !void {
     const body_size: c_int = 28;
 
     rl.ClearBackground(rl.BLACK);
-    x += raylib.DrawAndMeasureText("Station: ", x, y, title_size, rl.WHITE).width + 8;
+    x += @intFromFloat(raylib.DrawAndMeasureTextEx(state.font, "Station: ", @floatFromInt(x), @floatFromInt(y), @floatFromInt(title_size), 1, rl.WHITE).x + 8);
     rl.DrawLine(x, y + title_size + 2, rl.GetScreenWidth() - 16, y + title_size + 2, rl.WHITE);
-    if (state.db_font) |db_font| {
-        rl.DrawTextEx(db_font, hs.station_name.items.ptr, rl.Vector2{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, title_size, 0.9, rl.WHITE);
-    } else {
-        rl.DrawText(hs.station_name.items.ptr, x, y, title_size, rl.WHITE);
-    }
+    rl.DrawTextEx(state.font, hs.station_name.items.ptr, rl.Vector2{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, title_size, 0.9, rl.WHITE);
 
     y += title_size + 2 + 16;
 
@@ -175,11 +171,7 @@ pub fn render(state: *AppState) !void {
             }
         }
 
-        if (state.db_font) |db_font| {
-            rl.DrawTextEx(db_font, suggestion.name.ptr, rl.Vector2{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, body_size, 0.9, color);
-        } else {
-            rl.DrawText(suggestion.name.ptr, x, y, body_size, color);
-        }
+        rl.DrawTextEx(state.font, suggestion.name.ptr, rl.Vector2{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, body_size, 0.9, color);
 
         y += body_size + 2;
     }
