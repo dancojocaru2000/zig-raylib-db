@@ -170,7 +170,12 @@ fn draw_db1(state: *AppState) !void {
                                 const platform_width: c_int = @intFromFloat(rl.MeasureTextEx(state.font, platform.ptr, 40, 1).x);
 
                                 // Check if platform is different
-                                const is_changed = !std.mem.eql(u8, first.get("plannedPlatform").?.string, p);
+                                const is_changed = if (first.get("plannedPlatform")) |pp| ifblk: {
+                                    break :ifblk switch (pp) {
+                                        .string => |pp_str| !std.mem.eql(u8, pp_str, p),
+                                        else => true,
+                                    };
+                                } else true;
 
                                 if (is_changed) {
                                     rl.DrawRectangle(rl.GetScreenWidth() - platform_width - 16 - 8, y, platform_width + 16, 40, rl.WHITE);
@@ -351,7 +356,12 @@ fn draw_db1(state: *AppState) !void {
                             switch (platform_raw) {
                                 .string => |p| {
                                     // Check if platform is different
-                                    const is_changed = !std.mem.eql(u8, second.get("plannedPlatform").?.string, p);
+                                    const is_changed = if (second.get("plannedPlatform")) |pp| ifblk: {
+                                        break :ifblk switch (pp) {
+                                            .string => |pp_str| !std.mem.eql(u8, pp_str, p),
+                                            else => true,
+                                        };
+                                    } else true;
 
                                     if (is_changed) {
                                         rl.DrawRectangle(rl.GetScreenWidth() - platform_width - 16 - 8, y, platform_width + 16, font_size, db_blue);
