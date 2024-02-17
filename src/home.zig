@@ -28,7 +28,9 @@ fn fetchThread(state: *AppState) !void {
 
         curl.reset();
 
-        const query = try std.fmt.allocPrint(allocator, "query={s}&results=10&addresses=false&poi=false&pretty=false", .{station_name_buf.slice()});
+        const station_name_escaped = try std.Uri.escapeQuery(allocator, station_name_buf.slice());
+        defer allocator.free(station_name_escaped);
+        const query = try std.fmt.allocPrint(allocator, "query={s}&results=10&addresses=false&poi=false&pretty=false", .{station_name_escaped});
         defer allocator.free(query);
         locations_uri.query = query;
         defer locations_uri.query = null;
