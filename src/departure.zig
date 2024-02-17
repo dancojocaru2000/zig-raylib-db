@@ -3,6 +3,19 @@ const raylib = @import("raylib.zig");
 const rl = raylib.rl;
 const AppState = @import("state.zig");
 const Curl = @import("curl.zig");
+const C = @cImport({
+    @cDefine("_XOPEN_SOURE", "");
+    @cInclude("time.h");
+});
+
+fn getHourMin(str: [:0]const u8) struct { hour: u8, minute: u8 } {
+    var tm: C.tm = undefined;
+    _ = C.strptime(str, "%FT%T%z", &tm);
+    return .{
+        .hour = @intCast(tm.tm_hour),
+        .minute = @intCast(tm.tm_min),
+    };
+}
 
 fn fetchThread(state: *AppState) !void {
     std.debug.print("[departure/fetchThread] Started\n", .{});
@@ -112,13 +125,39 @@ fn draw_db1(state: *AppState) !void {
                     raylib.DrawRightAlignedTextEx(state.font, station_name.ptr, @floatFromInt(rl.GetScreenWidth() - 4), 4, 14, 0.8, rl.WHITE);
                 }
 
+                var with_santinel: [200]u8 = .{0} ** 200;
+                const time_struct = switch (first.get("plannedWhen").?) {
+                    .string => |when| sblk: {
+                        std.mem.copyForwards(u8, &with_santinel, when);
+                        const time = getHourMin(with_santinel[0..(when.len) :0]);
+                        break :sblk time;
+                    },
+                    else => unreachable,
+                };
+                var with_santinel_rt: [200]u8 = .{0} ** 200;
+                const realtime_struct = switch (first.get("when").?) {
+                    .string => |when| sblk: {
+                        std.mem.copyForwards(u8, &with_santinel_rt, when);
+                        const time = getHourMin(with_santinel_rt[0..(when.len) :0]);
+                        if (std.meta.eql(time, time_struct)) {
+                            break :sblk null;
+                        }
+                        break :sblk time;
+                    },
+                    else => null,
+                };
+
                 const line = try std.fmt.allocPrintZ(allocator, "{s}", .{first.get("line").?.object.get("name").?.string});
                 defer allocator.free(line);
+                const time = try std.fmt.allocPrintZ(allocator, "{d:0>2}:{d:0>2}", .{ time_struct.hour, time_struct.minute });
+                defer allocator.free(time);
+                const real_time = if (realtime_struct) |rts| try std.fmt.allocPrintZ(allocator, "{d:0>2}:{d:0>2}", .{ rts.hour, rts.minute }) else null;
+                defer if (real_time) |rt| allocator.free(rt);
                 const destination = try std.fmt.allocPrintZ(allocator, "{s}", .{first.get("direction").?.string});
                 defer allocator.free(destination);
                 var next_y = y;
                 next_y += @intFromFloat(raylib.DrawAndMeasureTextEx(state.font, line.ptr, 16, @floatFromInt(y), 32, 1, rl.WHITE).y);
-                next_y += 16;
+                next_y += 8;
                 if (ds.platform.items.len == 0) blk: {
                     if (first.get("platform")) |platform_raw| {
                         switch (platform_raw) {
@@ -141,6 +180,38 @@ fn draw_db1(state: *AppState) !void {
                     }
                 }
                 y = next_y;
+
+                const time_measure = raylib.DrawAndMeasureTextEx(
+                    state.font,
+                    time.ptr,
+                    16,
+                    @floatFromInt(y),
+                    48,
+                    1,
+                    rl.WHITE,
+                );
+                next_y += @intFromFloat(time_measure.y);
+                next_y += 8;
+                if (real_time) |rt| {
+                    rl.DrawRectangle(
+                        16 + 16 + @as(c_int, @intFromFloat(time_measure.x)) + 8,
+                        y,
+                        @intFromFloat(time_measure.x + 16),
+                        @intFromFloat(time_measure.y),
+                        rl.WHITE,
+                    );
+                    raylib.DrawTextEx(
+                        state.font,
+                        rt.ptr,
+                        16 * 3 + time_measure.x,
+                        @floatFromInt(y),
+                        48,
+                        1,
+                        db_blue,
+                    );
+                }
+                y = next_y;
+
                 y += @intFromFloat(raylib.DrawAndMeasureTextEx(
                     state.font,
                     destination.ptr,
@@ -173,12 +244,19 @@ fn draw_db1(state: *AppState) !void {
                 x += label_measurement_width;
 
                 // Compute line name width
+                var time_width: c_int = 0;
                 var line_name_width: c_int = 0;
                 var platform_width: c_int = 0;
                 for (not_cancelled.items, 0..) |dep_raw, idx| {
                     if (idx == 0) continue;
                     if (idx > max_trains) break;
                     const second = dep_raw.object;
+                    const time = try std.fmt.allocPrintZ(allocator, "00:00  ", .{});
+                    defer allocator.free(time);
+                    time_width = @max(
+                        time_width,
+                        @as(c_int, @intFromFloat(rl.MeasureTextEx(state.font, time.ptr, @floatFromInt(font_size), 1).x)),
+                    );
                     const next_train_line = try std.fmt.allocPrintZ(
                         allocator,
                         "{s} ",
@@ -206,12 +284,47 @@ fn draw_db1(state: *AppState) !void {
                         }
                     }
                 }
-                const destionation_x = x + line_name_width;
+                const line_x = x + time_width;
+                const destionation_x = line_x + line_name_width;
 
                 for (not_cancelled.items, 0..) |dep_raw, idx| {
                     if (idx == 0) continue;
                     if (idx > max_trains) break;
                     const second = dep_raw.object;
+
+                    var with_santinel: [200]u8 = .{0} ** 200;
+
+                    const schedule_time = switch (second.get("plannedWhen").?) {
+                        .string => |when| sblk: {
+                            std.mem.copyForwards(u8, &with_santinel, when);
+                            const time = getHourMin(with_santinel[0..(when.len) :0]);
+                            break :sblk time;
+                        },
+                        else => unreachable,
+                    };
+                    const time = switch (second.get("when").?) {
+                        .string => |when| sblk: {
+                            std.mem.copyForwards(u8, &with_santinel, when);
+                            const time = getHourMin(with_santinel[0..(when.len) :0]);
+                            break :sblk time;
+                        },
+                        else => sblk: {
+                            const plannedWhen = second.get("plannedWhen").?.string;
+                            std.mem.copyForwards(u8, &with_santinel, plannedWhen);
+                            const time = getHourMin(with_santinel[0..(plannedWhen.len) :0]);
+                            break :sblk time;
+                        },
+                    };
+
+                    const time_str = try std.fmt.allocPrintZ(
+                        allocator,
+                        "{:0>2}:{:0>2}  ",
+                        .{
+                            time.hour,
+                            time.minute,
+                        },
+                    );
+                    defer allocator.free(time_str);
                     const next_train_line = try std.fmt.allocPrintZ(
                         allocator,
                         "{s} ",
@@ -228,7 +341,8 @@ fn draw_db1(state: *AppState) !void {
                         },
                     );
                     defer allocator.free(next_train_direction);
-                    rl.DrawTextEx(state.font, next_train_line.ptr, .{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, font_size, 1, db_blue);
+                    rl.DrawTextEx(state.font, time_str.ptr, .{ .x = @floatFromInt(x), .y = @floatFromInt(y) }, font_size, 1, if (std.meta.eql(schedule_time, time)) db_blue else rl.RED);
+                    rl.DrawTextEx(state.font, next_train_line.ptr, .{ .x = @floatFromInt(line_x), .y = @floatFromInt(y) }, font_size, 1, db_blue);
                     rl.DrawTextEx(state.font, next_train_direction.ptr, .{ .x = @floatFromInt(destionation_x), .y = @floatFromInt(y) }, font_size, 1, db_blue);
                     if (ds.platform.items.len == 0) blk: {
                         if (second.get("platform")) |platform_raw| {
@@ -313,7 +427,26 @@ fn draw_ns(state: *AppState) !void {
                     break :blk false;
                 };
 
-                raylib.DrawTextEx(state.font, "00:00", 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                blk: {
+                    var with_santinel: [200]u8 = .{0} ** 200;
+
+                    const time = switch (train.get("when").?) {
+                        .string => |when| sblk: {
+                            std.mem.copyForwards(u8, &with_santinel, when);
+                            const time = getHourMin(with_santinel[0..(when.len) :0]);
+                            break :sblk time;
+                        },
+                        else => sblk: {
+                            const plannedWhen = train.get("plannedWhen").?.string;
+                            std.mem.copyForwards(u8, &with_santinel, plannedWhen);
+                            const time = getHourMin(with_santinel[0..(plannedWhen.len) :0]);
+                            break :sblk time;
+                        },
+                    };
+                    const time_str = std.fmt.allocPrintZ(allocator, "{:0>2}:{:0>2}", .{ time.hour, time.minute }) catch break :blk;
+                    defer allocator.free(time_str);
+                    raylib.DrawTextEx(state.font, time_str.ptr, 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                }
                 const direction = try std.fmt.allocPrintZ(
                     allocator,
                     "{s}",
