@@ -4,12 +4,6 @@ const rl = raylib.rl;
 const AppState = @import("state.zig");
 const Curl = @import("curl.zig");
 
-fn curlWriteHandler(ptr: [*]u8, size: usize, nmemb: usize, userdata: *std.ArrayList(u8)) callconv(.C) usize {
-    _ = size;
-    userdata.appendSlice(ptr[0..nmemb]) catch return 0;
-    return nmemb;
-}
-
 fn fetchThread(state: *AppState) !void {
     std.debug.print("[home/fetchThread] Started\n", .{});
     defer std.debug.print("[home/fetchThread] Ended\n", .{});
@@ -46,7 +40,7 @@ fn fetchThread(state: *AppState) !void {
 
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
-        _ = curl.setopt(.write_function, .{curlWriteHandler});
+        _ = curl.setopt(.write_function, .{Curl.Utils.array_list_append});
         _ = curl.setopt(.write_data, .{&result});
 
         const code = curl.perform();

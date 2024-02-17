@@ -71,3 +71,13 @@ pub fn setopt(
 ) c_api.CURLcode {
     return self.setopt_raw(@intFromEnum(option), args);
 }
+
+pub const Utils = struct {
+	const std = @import("std");
+
+	pub fn array_list_append(ptr: [*]u8, size: usize, nmemb: usize, userdata: *std.ArrayList(u8)) callconv(.C) usize {
+	    _ = size;
+	    userdata.appendSlice(ptr[0..nmemb]) catch return 0;
+	    return nmemb;
+	}
+};
