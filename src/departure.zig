@@ -71,37 +71,9 @@ fn fetchThread(state: *AppState) !void {
     }
 }
 
-pub fn render(state: *AppState) !void {
+fn draw_db1(state: *AppState) !void {
     const allocator = state.allocator;
-    var ds = &state.departure_screen_state;
-
-    if (ds.fetch_thread == null) {
-        ds.fetch_thread = std.Thread.spawn(.{}, fetchThread, .{state}) catch null;
-    }
-
-    while (raylib.GetKeyPressed()) |key| {
-        switch (key) {
-            rl.KEY_LEFT => {
-                state.screen = .home;
-            },
-            rl.KEY_R => {
-                ds.should_refresh = true;
-            },
-            rl.KEY_MINUS, rl.KEY_KP_SUBTRACT => {
-                ds.max_next_trains = @max(1, ds.max_next_trains - 1);
-            },
-            rl.KEY_EQUAL, rl.KEY_KP_EQUAL => {
-                ds.max_next_trains = @min(ds.max_next_trains + 1, if (ds.fetch_result) |fr| @as(c_int, @intCast(fr.value.object.get("departures").?.array.items.len)) else 5);
-            },
-            rl.KEY_T => {
-                ds.include_tram = !ds.include_tram;
-            },
-            else => {},
-        }
-    }
-
-    rl.BeginDrawing();
-    defer rl.EndDrawing();
+    const ds = &state.departure_screen_state;
 
     const db_blue = raylib.ColorInt(0x18226f);
     rl.ClearBackground(if (ds.should_refresh) rl.ORANGE else db_blue);
@@ -133,7 +105,7 @@ pub fn render(state: *AppState) !void {
                     const station_name = std.fmt.allocPrintZ(allocator, "{s}", .{first.get("stop").?.object.get("name").?.string}) catch break :station_name_blk;
                     defer allocator.free(station_name);
                     rl.SetWindowTitle(station_name.ptr);
-                    raylib.DrawRightAlignedText(station_name.ptr, rl.GetScreenWidth() - 4, 4, 14, rl.WHITE);
+                    raylib.DrawRightAlignedTextEx(state.font, station_name.ptr, @floatFromInt(rl.GetScreenWidth() - 4), 4, 14, 0.8, rl.WHITE);
                 }
 
                 const line = try std.fmt.allocPrintZ(allocator, "{s}", .{first.get("line").?.object.get("name").?.string});
@@ -149,7 +121,16 @@ pub fn render(state: *AppState) !void {
                             .string => |p| {
                                 const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch break :blk;
                                 defer allocator.free(platform);
-                                raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), 40, 1, rl.WHITE);
+
+                                const platform_width: c_int = @intFromFloat(rl.MeasureTextEx(state.font, platform.ptr, 40, 1).x);
+
+                                // Check if platform is different
+                                const is_changed = !std.mem.eql(u8, first.get("plannedPlatform").?.string, p);
+
+                                if (is_changed) {
+                                    rl.DrawRectangle(rl.GetScreenWidth() - platform_width - 16 - 8, y, platform_width + 16, 40, rl.WHITE);
+                                }
+                                raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), 40, 1, if (is_changed) db_blue else rl.WHITE);
                             },
                             else => {},
                         }
@@ -189,6 +170,7 @@ pub fn render(state: *AppState) !void {
 
                 // Compute line name width
                 var line_name_width: c_int = 0;
+                var platform_width: c_int = 0;
                 for (not_cancelled.items, 0..) |dep_raw, idx| {
                     if (idx == 0) continue;
                     if (idx > max_trains) break;
@@ -205,6 +187,20 @@ pub fn render(state: *AppState) !void {
                         line_name_width,
                         @as(c_int, @intFromFloat(rl.MeasureTextEx(state.font, next_train_line.ptr, @floatFromInt(font_size), 1).x)),
                     );
+
+                    if (second.get("platform")) |platform_raw| {
+                        switch (platform_raw) {
+                            .string => |p| {
+                                const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch continue;
+                                defer allocator.free(platform);
+                                platform_width = @max(
+                                    platform_width,
+                                    @as(c_int, @intFromFloat(rl.MeasureTextEx(state.font, platform.ptr, @floatFromInt(font_size), 1).x)),
+                                );
+                            },
+                            else => {},
+                        }
+                    }
                 }
                 const destionation_x = x + line_name_width;
 
@@ -234,9 +230,15 @@ pub fn render(state: *AppState) !void {
                         if (second.get("platform")) |platform_raw| {
                             switch (platform_raw) {
                                 .string => |p| {
+                                    // Check if platform is different
+                                    const is_changed = !std.mem.eql(u8, second.get("plannedPlatform").?.string, p);
+
+                                    if (is_changed) {
+                                        rl.DrawRectangle(rl.GetScreenWidth() - platform_width - 16 - 8, y, platform_width + 16, font_size, db_blue);
+                                    }
                                     const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch break :blk;
                                     defer allocator.free(platform);
-                                    raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), @floatFromInt(font_size), 1, db_blue);
+                                    raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), @floatFromInt(font_size), 1, if (is_changed) rl.WHITE else db_blue);
                                 },
                                 else => {},
                             }
@@ -250,6 +252,171 @@ pub fn render(state: *AppState) !void {
         }
     } else {
         rl.DrawText(state.departure_screen_state.station_id.items.ptr, 16, 16, 32, rl.WHITE);
+    }
+}
+
+fn draw_ns(state: *AppState) !void {
+    const allocator = state.allocator;
+    const ds = &state.departure_screen_state;
+    _ = .{ allocator, ds };
+
+    const ms = std.time.milliTimestamp();
+    const language = @rem(@divTrunc(ms, 5000), 2);
+
+    const ns_bg1 = raylib.ColorInt(0xE6e6e6);
+    const ns_bg2 = raylib.ColorInt(0xbdd1d9);
+    const ns_fg1 = raylib.ColorInt(0x1a4379);
+    const ns_fg2 = raylib.ColorInt(0x6795af);
+    const ns_fg3 = raylib.ColorInt(0xab5161);
+    const header_fs: f32 = 16;
+    const station_fs: f32 = 28;
+    const cancel_fs: f32 = 24;
+    const platform_fs: f32 = 28;
+    rl.ClearBackground(ns_bg1);
+
+    const col1w = rl.MeasureTextEx(state.font, "00:00", station_fs, 1).x;
+
+    const header_height = rl.MeasureTextEx(state.font, "Vertrek", header_fs, 1).y;
+    rl.DrawRectangle(0, 0, rl.GetScreenWidth(), 4 + @as(c_int, @intFromFloat(header_height)) + 4, ns_bg2);
+    raylib.DrawTextEx(state.font, if (language == 0) "Vertrek" else "Depart", 8, 4, header_fs, 1, ns_fg1);
+    raylib.DrawTextEx(state.font, if (language == 0) "Naar/Opmerking" else "To/Via", 8 + col1w + 8, 4, header_fs, 1, ns_fg1);
+    raylib.DrawTextEx(state.font, if (language == 0) "Spoor" else "Platform", @floatFromInt(rl.GetScreenWidth() - 200), 4, header_fs, 1, ns_fg1);
+
+    var y = header_height + 8 + 2;
+
+    if (ds.fetch_result) |data| {
+        if (data.value.object.get("departures")) |departures_raw| {
+            const departures = departures_raw.array.items;
+            for (departures, 0..) |d, idx| {
+                const line1h = rl.MeasureTextEx(state.font, "00:00", station_fs, 1).y;
+                const line2h = rl.MeasureTextEx(state.font, "Cancelled", cancel_fs, 1).y;
+                const total_height = line1h + 4 + line2h + 2;
+                if (@mod(idx, 2) == 1) {
+                    // Alternate background
+                    rl.DrawRectangle(0, @intFromFloat(y), rl.GetScreenWidth(), @intFromFloat(total_height), ns_bg2);
+                }
+
+                const train = d.object;
+                const cancelled = blk: {
+                    if (train.get("cancelled")) |cancelled| {
+                        switch (cancelled) {
+                            .bool => |b| {
+                                break :blk b;
+                            },
+                            else => {},
+                        }
+                    }
+                    break :blk false;
+                };
+
+                raylib.DrawTextEx(state.font, "00:00", 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                const direction = try std.fmt.allocPrintZ(
+                    allocator,
+                    "{s}",
+                    .{
+                        train.get("direction").?.string,
+                    },
+                );
+                defer allocator.free(direction);
+                raylib.DrawTextEx(state.font, direction.ptr, 8 + col1w + 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+
+                // Draw platform square
+                const square_side = total_height - 4;
+                const sw = rl.GetScreenWidth();
+                if (train.get("platform")) |platform_raw| {
+                    switch (platform_raw) {
+                        .string => |p| {
+                            const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch continue;
+                            defer allocator.free(platform);
+
+                            rl.DrawRectangle(sw - 200, @intFromFloat(y + 2), 12, 12, if (cancelled) ns_fg2 else ns_fg1);
+                            rl.DrawLine(sw - 200, @intFromFloat(y + 2), sw - 200, @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+                            rl.DrawLine(sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+                            rl.DrawLine(sw - 200, @intFromFloat(y + 2), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2), if (cancelled) ns_fg2 else ns_fg1);
+                            rl.DrawLine(sw - 200, @intFromFloat(y + 2 + square_side), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+
+                            const text_size = rl.MeasureTextEx(state.font, platform.ptr, platform_fs, 1);
+                            raylib.DrawTextEx(
+                                state.font,
+                                if (cancelled) "-" else platform.ptr,
+                                @as(f32, @floatFromInt(sw - 200)) + @divTrunc(square_side, 2) - (text_size.x / 2),
+                                y + 2 + @divTrunc(square_side, 2) - (text_size.y / 2),
+                                platform_fs,
+                                1,
+                                if (cancelled) ns_fg2 else ns_fg1,
+                            );
+                        },
+                        else => {
+                            if (cancelled) {
+                                rl.DrawRectangle(sw - 200, @intFromFloat(y + 2), 12, 12, if (cancelled) ns_fg2 else ns_fg1);
+                                rl.DrawLine(sw - 200, @intFromFloat(y + 2), sw - 200, @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+                                rl.DrawLine(sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+                                rl.DrawLine(sw - 200, @intFromFloat(y + 2), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2), if (cancelled) ns_fg2 else ns_fg1);
+                                rl.DrawLine(sw - 200, @intFromFloat(y + 2 + square_side), sw - 200 + @as(c_int, @intFromFloat(square_side)), @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
+
+                                const text_size = rl.MeasureTextEx(state.font, "-", platform_fs, 1);
+                                raylib.DrawTextEx(
+                                    state.font,
+                                    "-",
+                                    @as(f32, @floatFromInt(sw - 200)) + @divTrunc(square_side, 2) - (text_size.x / 2),
+                                    y + 2 + @divTrunc(square_side, 2) - (text_size.y / 2),
+                                    platform_fs,
+                                    1,
+                                    if (cancelled) ns_fg2 else ns_fg1,
+                                );
+                            }
+                        },
+                    }
+                }
+
+                y += line1h + 4;
+                const cancelled_h = raylib.DrawAndMeasureTextEx(state.font, if (cancelled) (if (language == 0) "Rijdt niet" else "Cancelled") else " ", 8 + col1w + 8, y, cancel_fs, 1, ns_fg3).y;
+                y += cancelled_h + 4;
+            }
+        }
+    }
+}
+
+pub fn render(state: *AppState) !void {
+    var ds = &state.departure_screen_state;
+
+    if (ds.fetch_thread == null) {
+        ds.fetch_thread = std.Thread.spawn(.{}, fetchThread, .{state}) catch null;
+    }
+
+    while (raylib.GetKeyPressed()) |key| {
+        switch (key) {
+            rl.KEY_LEFT => {
+                state.screen = .home;
+            },
+            rl.KEY_R => {
+                ds.should_refresh = true;
+            },
+            rl.KEY_MINUS, rl.KEY_KP_SUBTRACT => {
+                ds.max_next_trains = @max(1, ds.max_next_trains - 1);
+            },
+            rl.KEY_EQUAL, rl.KEY_KP_EQUAL => {
+                ds.max_next_trains = @min(ds.max_next_trains + 1, if (ds.fetch_result) |fr| @as(c_int, @intCast(fr.value.object.get("departures").?.array.items.len)) else 5);
+            },
+            rl.KEY_T => {
+                ds.include_tram = !ds.include_tram;
+            },
+            rl.KEY_ONE => {
+                ds.render_style = .db1;
+            },
+            rl.KEY_THREE => {
+                ds.render_style = .ns;
+            },
+            else => {},
+        }
+    }
+
+    rl.BeginDrawing();
+    defer rl.EndDrawing();
+
+    switch (ds.render_style) {
+        .db1 => try draw_db1(state),
+        .ns => try draw_ns(state),
     }
 
     state.close_app = rl.WindowShouldClose();

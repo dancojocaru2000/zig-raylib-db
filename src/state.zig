@@ -19,6 +19,11 @@ pub const HomeScreenState = struct {
     selection_idx: i8 = 0,
 };
 
+pub const RenderStyle = enum(u8) {
+    db1 = 1,
+    ns = 3,
+};
+
 pub const DepartureScreenState = struct {
     station_id: std.ArrayListUnmanaged(u8),
     platform: std.ArrayListUnmanaged(u8),
@@ -29,6 +34,7 @@ pub const DepartureScreenState = struct {
     should_refresh: bool = false,
     max_next_trains: c_int = 5,
     include_tram: bool = false,
+    render_style: RenderStyle = .db1,
 };
 
 allocator: std.mem.Allocator,
