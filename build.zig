@@ -25,13 +25,16 @@ pub fn build(b: *std.Build) void {
     });
 
     // Link Raylib
-    exe.addLibraryPath(.{
-        .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/lib",
-    });
-    exe.linkSystemLibrary("raylib");
+    // exe.addLibraryPath(.{
+    //     .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/lib",
+    // });
+    // exe.linkSystemLibrary("raylib");
     exe.linkSystemLibrary("curl");
+    exe.addObjectFile(.{
+        .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/lib/libraylib.a",
+    });
     // exe.addObjectFile(.{
-    //     .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/lib/libraylib.a",
+    //     .cwd_relative = "/opt/homebrew/Cellar/curl/8.5.0/lib/libcurl.a",
     // });
     exe.addIncludePath(.{
         .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/include",
