@@ -124,7 +124,7 @@ fn draw_db1(state: *AppState) !void {
                     const station_name = std.fmt.allocPrintZ(allocator, "{s}", .{first.get("stop").?.object.get("name").?.string}) catch break :station_name_blk;
                     defer allocator.free(station_name);
                     rl.SetWindowTitle(station_name.ptr);
-                    raylib.DrawRightAlignedTextEx(state.font, station_name.ptr, @floatFromInt(rl.GetScreenWidth() - 4), 4, 14, 0.8, rl.WHITE);
+                    raylib.DrawRightAlignedTextEx(state.font, station_name, @floatFromInt(rl.GetScreenWidth() - 4), 4, 14, 0.8, rl.WHITE);
                 }
 
                 var with_santinel: [200]u8 = .{0} ** 200;
@@ -158,7 +158,7 @@ fn draw_db1(state: *AppState) !void {
                 const destination = try std.fmt.allocPrintZ(allocator, "{s}", .{first.get("direction").?.string});
                 defer allocator.free(destination);
                 var next_y = y;
-                next_y += @intFromFloat(raylib.DrawAndMeasureTextEx(state.font, line.ptr, 16, @floatFromInt(y), 32, 1, rl.WHITE).y);
+                next_y += @intFromFloat(raylib.DrawAndMeasureTextEx(state.font, line, 16, @floatFromInt(y), 32, 1, rl.WHITE).y);
                 next_y += 8;
                 if (ds.platform.items.len == 0) blk: {
                     if (first.get("platform")) |platform_raw| {
@@ -180,7 +180,7 @@ fn draw_db1(state: *AppState) !void {
                                 if (is_changed) {
                                     rl.DrawRectangle(rl.GetScreenWidth() - platform_width - 16 - 8, y, platform_width + 16, 40, rl.WHITE);
                                 }
-                                raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), 40, 1, if (is_changed) db_blue else rl.WHITE);
+                                raylib.DrawRightAlignedTextEx(state.font, platform, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), 40, 1, if (is_changed) db_blue else rl.WHITE);
                             },
                             else => {},
                         }
@@ -190,7 +190,7 @@ fn draw_db1(state: *AppState) !void {
 
                 const time_measure = raylib.DrawAndMeasureTextEx(
                     state.font,
-                    time.ptr,
+                    time,
                     16,
                     @floatFromInt(y),
                     48,
@@ -209,7 +209,7 @@ fn draw_db1(state: *AppState) !void {
                     );
                     raylib.DrawTextEx(
                         state.font,
-                        rt.ptr,
+                        rt,
                         16 * 3 + time_measure.x,
                         @floatFromInt(y),
                         48,
@@ -221,7 +221,7 @@ fn draw_db1(state: *AppState) !void {
 
                 y += @intFromFloat(raylib.DrawAndMeasureTextEx(
                     state.font,
-                    destination.ptr,
+                    destination,
                     16,
                     @floatFromInt(y),
                     56,
@@ -368,7 +368,7 @@ fn draw_db1(state: *AppState) !void {
                                     }
                                     const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch break :blk;
                                     defer allocator.free(platform);
-                                    raylib.DrawRightAlignedTextEx(state.font, platform.ptr, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), @floatFromInt(font_size), 1, if (is_changed) rl.WHITE else db_blue);
+                                    raylib.DrawRightAlignedTextEx(state.font, platform, @floatFromInt(rl.GetScreenWidth() - 16), @floatFromInt(y), @floatFromInt(font_size), 1, if (is_changed) rl.WHITE else db_blue);
                                 },
                                 else => {},
                             }
@@ -457,7 +457,7 @@ fn draw_ns(state: *AppState) !void {
                     };
                     const time_str = std.fmt.allocPrintZ(allocator, "{:0>2}:{:0>2}", .{ time.hour, time.minute }) catch break :blk;
                     defer allocator.free(time_str);
-                    raylib.DrawTextEx(state.font, time_str.ptr, 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                    raylib.DrawTextEx(state.font, time_str, 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
                 }
                 const direction = try std.fmt.allocPrintZ(
                     allocator,
@@ -467,7 +467,7 @@ fn draw_ns(state: *AppState) !void {
                     },
                 );
                 defer allocator.free(direction);
-                raylib.DrawTextEx(state.font, direction.ptr, 8 + col1w + 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                raylib.DrawTextEx(state.font, direction, 8 + col1w + 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
 
                 // Draw platform square
                 const square_side = total_height - 4;
@@ -487,7 +487,7 @@ fn draw_ns(state: *AppState) !void {
                             const text_size = rl.MeasureTextEx(state.font, platform.ptr, platform_fs, 1);
                             raylib.DrawTextEx(
                                 state.font,
-                                if (cancelled) "-" else platform.ptr,
+                                if (cancelled) "-" else platform,
                                 @as(f32, @floatFromInt(sw - 200)) + @divTrunc(square_side, 2) - (text_size.x / 2),
                                 y + 2 + @divTrunc(square_side, 2) - (text_size.y / 2),
                                 platform_fs,
