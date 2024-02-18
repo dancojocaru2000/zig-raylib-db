@@ -67,9 +67,9 @@ pub fn setopt_raw(
 pub fn setopt(
     self: *@This(),
     option: Option,
-    args: anytype,
+    arg: anytype,
 ) c_api.CURLcode {
-    return self.setopt_raw(@intFromEnum(option), args);
+    return self.setopt_raw(@intFromEnum(option), .{ arg });
 }
 
 pub const Utils = struct {

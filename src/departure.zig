@@ -59,12 +59,12 @@ fn fetchThread(state: *AppState) !void {
 
         const url = try std.fmt.allocPrintZ(allocator, "{}", .{departures_uri});
         defer allocator.free(url);
-        _ = curl.setopt(.url, .{url.ptr});
+        _ = curl.setopt(.url, url.ptr);
 
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
-        _ = curl.setopt(.write_function, .{Curl.Utils.array_list_append});
-        _ = curl.setopt(.write_data, .{&result});
+        _ = curl.setopt(.write_function, Curl.Utils.array_list_append);
+        _ = curl.setopt(.write_data, &result);
 
         const code = curl.perform();
         std.debug.print("[departure/fetchThread] cURL Code: {}\n", .{code});
