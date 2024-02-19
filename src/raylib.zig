@@ -1,3 +1,4 @@
+const std = @import("std");
 pub const rl = @cImport({
     @cInclude("raylib.h");
 });
@@ -94,4 +95,11 @@ pub fn GetCharPressed() ?c_int {
         null
     else
         result;
+}
+pub fn LoadFontEx(file_name: [:0]const u8, font_size: c_int, codepoints: *c_int, codepoint_count: c_int) ?rl.Font {
+    const font = rl.LoadFontEx(file_name.ptr, font_size, codepoints, codepoint_count);
+    if (std.meta.eql(font, rl.GetFontDefault())) {
+        return null;
+    }
+    return font;
 }

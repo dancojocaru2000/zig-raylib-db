@@ -14,21 +14,20 @@ pub fn main() !void {
     rl.InitWindow(800, 600, "Testing Raylib");
     defer rl.CloseWindow();
 
-    const font = blk: {
-        var cp_cnt: c_int = 0;
-        const cp = rl.LoadCodepoints(
-            "aäbcdeèéfghijklmnoöpqrsßtuüvwxyzAÄBCDEÈÉFGHIJKLMNOÖPQRSẞTUÜVWXYZ0123456789-_,()/\\:+",
-            &cp_cnt,
-        );
-        break :blk rl.LoadFontEx("./db.ttf", 64, cp, cp_cnt);
-    };
+    var cp_cnt: c_int = 0;
+    const cp = rl.LoadCodepoints(
+        "aäbcdeèéfghijklmnoöpqrsßtuüvwxyzAÄBCDEÈÉFGHIJKLMNOÖPQRSẞTUÜVWXYZ0123456789-_,()/\\:+",
+        &cp_cnt,
+    );
 
     var station_name_buffer: [100]u8 = .{0} ** 100;
     var platform_buffer: [20]u8 = .{0} ** 20;
     var station_id_buffer: [10]u8 = .{0} ** 10;
     var appState = AppState{
         .allocator = allocator,
-        .font = font,
+        .font = rl.LoadFontEx("./noto.ttf", 64, cp, cp_cnt),
+        .db_font = raylib.LoadFontEx("./private/db.ttf", 64, cp, cp_cnt),
+        .ns_font = raylib.LoadFontEx("./private/ns.ttf", 64, cp, cp_cnt),
         .home_screen_state = .{
             .station_name = std.ArrayListUnmanaged(u8).initBuffer(&station_name_buffer),
         },

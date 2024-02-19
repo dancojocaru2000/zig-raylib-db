@@ -41,6 +41,8 @@ pub const DepartureScreenState = struct {
 allocator: std.mem.Allocator,
 close_app: bool = false,
 font: rl.Font,
+db_font: ?rl.Font,
+ns_font: ?rl.Font,
 screen: Screen = .home,
 home_screen_state: HomeScreenState,
 departure_screen_state: DepartureScreenState,
