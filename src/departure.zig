@@ -395,11 +395,11 @@ fn draw_ns(state: *AppState) !void {
     const ms = std.time.milliTimestamp();
     const language = @rem(@divTrunc(ms, 5000), 2);
 
-    const ns_bg1 = raylib.ColorInt(0xE6e6e6);
-    const ns_bg2 = raylib.ColorInt(0xbdd1d9);
-    const ns_fg1 = raylib.ColorInt(0x1a4379);
+    const ns_bg1 = raylib.ColorInt(0xf7f5ef);
+    const ns_bg2 = raylib.ColorInt(0xd7e0ed);
+    const ns_fg1 = raylib.ColorInt(0x233771);
     const ns_fg2 = raylib.ColorInt(0x6795af);
-    const ns_fg3 = raylib.ColorInt(0xab5161);
+    const ns_fg3 = raylib.ColorInt(0xa11e1d);
     const header_fs: f32 = 16;
     const station_fs: f32 = 28;
     const cancel_fs: f32 = 24;
