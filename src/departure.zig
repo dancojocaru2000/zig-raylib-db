@@ -441,10 +441,10 @@ fn draw_ns(state: *AppState) !void {
                     break :blk false;
                 };
 
-                blk: {
+                const time_size: rl.Vector2 = blk: {
                     var with_santinel: [200]u8 = .{0} ** 200;
 
-                    const time = switch (train.get("when").?) {
+                    const time = switch (train.get("plannedWhen").?) {
                         .string => |when| sblk: {
                             std.mem.copyForwards(u8, &with_santinel, when);
                             const time = getHourMin(with_santinel[0..(when.len) :0]);
@@ -457,10 +457,23 @@ fn draw_ns(state: *AppState) !void {
                             break :sblk time;
                         },
                     };
-                    const time_str = std.fmt.allocPrintZ(allocator, "{:0>2}:{:0>2}", .{ time.hour, time.minute }) catch break :blk;
+                    const time_str = std.fmt.allocPrintZ(allocator, "{:0>2}:{:0>2}", .{ time.hour, time.minute }) catch break :blk .{};
                     defer allocator.free(time_str);
-                    raylib.DrawTextEx(font, time_str, 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                    break :blk raylib.DrawAndMeasureTextEx(font, time_str, 8, y, station_fs, 1, if (cancelled) ns_fg2 else ns_fg1);
+                };
+
+                if (train.get("delay")) |delay_raw| blk: {
+                    switch (delay_raw) {
+                        .integer => |delay| {
+                            if (delay < 60) break :blk;
+                            const delay_str = std.fmt.allocPrintZ(allocator, "+{}", .{@divTrunc(delay, 60)}) catch break :blk;
+                            defer allocator.free(delay_str);
+                            raylib.DrawRightAlignedTextEx(font, delay_str, 8 + time_size.x, y + time_size.y + 4, station_fs, 1, ns_fg3);
+                        },
+                        else => {},
+                    }
                 }
+
                 const direction = try std.fmt.allocPrintZ(
                     allocator,
                     "{s}",
