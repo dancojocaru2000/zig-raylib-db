@@ -386,6 +386,29 @@ fn draw_db1(state: *AppState) !void {
     }
 }
 
+const categories = .{
+    .{ "ICE", "ICE" },
+    .{ "IC", "Intercity" },
+    .{ "Flix", "FlixTrain" },
+    .{ "FLX", "FlixTrain" },
+    .{ "EST", "Eurostar" },
+    .{ "EUR", "Eurostar" },
+    .{ "EC", "Eurocity" },
+    .{ "EN", "Euronight" },
+    .{ "RJ", "Railjet" },
+    .{ "TGV", "TGV INOUI" },
+    .{ "FEX", "FEX" },
+};
+
+fn full_category_name(line_name: []const u8) ?[]const u8 {
+    inline for (categories) |category| {
+        if (std.mem.indexOf(u8, line_name, category[0])) |_| {
+            return category[1];
+        }
+    }
+    return null;
+}
+
 fn draw_ns(state: *AppState) !void {
     const allocator = state.allocator;
     const ds = &state.departure_screen_state;
@@ -490,8 +513,11 @@ fn draw_ns(state: *AppState) !void {
                 if (train.get("platform")) |platform_raw| {
                     switch (platform_raw) {
                         .string => |p| {
-                            const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p}) catch continue;
+                            const maybe_space = std.mem.indexOf(u8, p, " ") orelse p.len;
+                            const platform = std.fmt.allocPrintZ(allocator, "{s}", .{p[0..maybe_space]}) catch continue;
                             defer allocator.free(platform);
+                            const maybe_platform_area = if (maybe_space != p.len) std.fmt.allocPrintZ(allocator, "{s}", .{p[maybe_space + 1 ..]}) catch null else null;
+                            defer if (maybe_platform_area) |platform_area| allocator.free(platform_area);
 
                             rl.DrawRectangle(sw - 200, @intFromFloat(y + 2), 12, 12, if (cancelled) ns_fg2 else ns_fg1);
                             rl.DrawLine(sw - 200, @intFromFloat(y + 2), sw - 200, @intFromFloat(y + 2 + square_side), if (cancelled) ns_fg2 else ns_fg1);
@@ -509,6 +535,21 @@ fn draw_ns(state: *AppState) !void {
                                 1,
                                 if (cancelled) ns_fg2 else ns_fg1,
                             );
+
+                            if (!cancelled) {
+                                if (maybe_platform_area) |platform_area| {
+                                    const ptext_size = rl.MeasureTextEx(font, platform_area.ptr, 14, 0.8);
+                                    raylib.DrawTextEx(
+                                        font,
+                                        platform_area,
+                                        @as(f32, @floatFromInt(sw - 200)) + @divTrunc(square_side, 2) - (ptext_size.x / 2),
+                                        y + 2 + square_side - ptext_size.y - 2,
+                                        14,
+                                        0.8,
+                                        ns_fg1,
+                                    );
+                                }
+                            }
                         },
                         else => {
                             if (cancelled) {
@@ -534,7 +575,34 @@ fn draw_ns(state: *AppState) !void {
                 }
 
                 y += line1h + 4;
-                const cancelled_h = raylib.DrawAndMeasureTextEx(font, if (cancelled) (if (language == 0) "Rijdt niet" else "Cancelled") else " ", 8 + col1w + 8, y, cancel_fs, 1, ns_fg3).y;
+                const cancelled_h = raylib.DrawAndMeasureTextEx(
+                    font,
+                    if (cancelled) (if (language == 0) "Rijdt niet" else "Cancelled") else " ",
+                    8 + col1w + 8,
+                    y,
+                    cancel_fs,
+                    1,
+                    ns_fg3,
+                ).y;
+
+                const line_name = train.get("line").?.object.get("name").?.string;
+                const maybe_line_name_str = std.fmt.allocPrintZ(
+                    allocator,
+                    "{s}",
+                    .{if (full_category_name(line_name)) |s| s else line_name},
+                ) catch null;
+                if (maybe_line_name_str) |line_name_str| {
+                    raylib.DrawTextEx(
+                        font,
+                        line_name_str,
+                        @as(f32, @floatFromInt(sw - 200)) + square_side + 4,
+                        y,
+                        cancel_fs,
+                        1,
+                        if (cancelled) ns_fg2 else ns_fg1,
+                    );
+                }
+
                 y += cancelled_h + 4;
             }
         }
