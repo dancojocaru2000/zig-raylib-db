@@ -436,7 +436,7 @@ fn draw_ns(state: *AppState) !void {
     const header_height = rl.MeasureTextEx(font, "Vertrek", header_fs, 1).y;
     rl.DrawRectangle(0, 0, rl.GetScreenWidth(), 4 + @as(c_int, @intFromFloat(header_height)) + 4, ns_bg2);
     raylib.DrawTextEx(font, if (language == 0) "Vertrek" else "Depart", 8, 4, header_fs, 1, ns_fg1);
-    raylib.DrawTextEx(font, if (language == 0) "Naar/Opmerking" else "To/Via", 8 + col1w + 8, 4, header_fs, 1, ns_fg1);
+    raylib.DrawTextEx(font, if (language == 0) "Naar/Opmerking" else "To/Remarks", 8 + col1w + 8, 4, header_fs, 1, ns_fg1);
     raylib.DrawTextEx(font, if (language == 0) "Spoor" else "Platform", @floatFromInt(rl.GetScreenWidth() - 200), 4, header_fs, 1, ns_fg1);
 
     var y = header_height + 8 + 2;
