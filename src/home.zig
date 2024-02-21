@@ -44,6 +44,8 @@ fn fetchThread(state: *AppState) !void {
         defer result.deinit();
         _ = curl.setopt(.write_function, Curl.Utils.array_list_append);
         _ = curl.setopt(.write_data, &result);
+        _ = curl.setopt(.low_speed_limit, @as(c_long, 128));
+        _ = curl.setopt(.low_speed_time, @as(c_long, 5));
 
         const code = curl.perform();
         std.debug.print("[home/fetchThread] cURL Code: {}\n", .{code});
