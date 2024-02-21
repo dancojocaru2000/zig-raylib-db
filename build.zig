@@ -31,7 +31,11 @@ pub fn build(b: *std.Build) void {
     // exe.linkSystemLibrary("raylib");
     exe.linkSystemLibrary("curl");
     exe.addObjectFile(.{
-        .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/lib/libraylib.a",
+        .cwd_relative = switch (target.result.os.tag) {
+            .macos => "/opt/homebrew/Cellar/raylib/5.0/lib/libraylib.a",
+            .linux => "./libraylib.a",
+            else => @panic("Unsupported platform"),
+        },
     });
     // exe.addObjectFile(.{
     //     .cwd_relative = "/opt/homebrew/Cellar/curl/8.5.0/lib/libcurl.a",
@@ -40,12 +44,20 @@ pub fn build(b: *std.Build) void {
         .cwd_relative = "/opt/homebrew/Cellar/raylib/5.0/include",
     });
     // Raylib dependencies
-    exe.linkFramework("Foundation");
-    exe.linkFramework("CoreVideo");
-    exe.linkFramework("IOKit");
-    exe.linkFramework("Cocoa");
-    exe.linkFramework("GLUT");
-    exe.linkFramework("OpenGL");
+    switch (target.result.os.tag) {
+        .macos => {
+            exe.linkFramework("Foundation");
+            exe.linkFramework("CoreVideo");
+            exe.linkFramework("IOKit");
+            exe.linkFramework("Cocoa");
+            exe.linkFramework("GLUT");
+            exe.linkFramework("OpenGL");
+        },
+        .linux => {
+            exe.linkSystemLibrary("c");
+        },
+        else => @panic("Unsupported platform"),
+    }
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

@@ -4,7 +4,7 @@ const rl = raylib.rl;
 const AppState = @import("state.zig");
 const Curl = @import("curl.zig");
 const C = @cImport({
-    @cDefine("_XOPEN_SOURE", "");
+    @cDefine("_XOPEN_SOURCE", "");
     @cInclude("time.h");
 });
 
