@@ -5,6 +5,8 @@ const home = @import("home.zig");
 const departure = @import("departure.zig");
 const AppState = @import("state.zig");
 
+const noto = @embedFile("./noto.ttf");
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -25,7 +27,7 @@ pub fn main() !void {
     var station_id_buffer: [10]u8 = .{0} ** 10;
     var appState = AppState{
         .allocator = allocator,
-        .font = rl.LoadFontEx("./noto.ttf", 64, cp, cp_cnt),
+        .font = rl.LoadFontFromMemory(".ttf", noto, noto.len, 64, cp, cp_cnt),
         .db_font = raylib.LoadFontEx("./private/db.ttf", 64, cp, cp_cnt),
         .ns_font = raylib.LoadFontEx("./private/ns.ttf", 64, cp, cp_cnt),
         .home_screen_state = .{
