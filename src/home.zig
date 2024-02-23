@@ -72,6 +72,8 @@ fn fetchThread(state: *AppState) !void {
                 }
             }
         }
+        state.home_screen_state.mutex.lock();
+        defer state.home_screen_state.mutex.unlock();
         if (state.home_screen_state.suggestions.len > 0) {
             for (state.home_screen_state.suggestions) |suggestion| {
                 allocator.free(suggestion.id);
@@ -94,8 +96,14 @@ pub fn render(state: *AppState) !void {
     }
 
     while (raylib.GetCharPressed()) |char| {
-        hs.station_name.appendAssumeCapacity(@intCast(char));
+        if (hs.station_name.items.len < hs.station_name_max_len) {
+            hs.station_name.appendAssumeCapacity(@intCast(char));
+        }
     }
+
+    state.home_screen_state.mutex.lock();
+    defer state.home_screen_state.mutex.unlock();
+
     while (raylib.GetKeyPressed()) |key| {
         switch (key) {
             rl.KEY_BACKSPACE => {

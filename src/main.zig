@@ -32,6 +32,7 @@ pub fn main() !void {
         .ns_font = raylib.LoadFontEx("./private/ns.ttf", 64, cp, cp_cnt),
         .home_screen_state = .{
             .station_name = std.ArrayListUnmanaged(u8).initBuffer(&station_name_buffer),
+            .station_name_max_len = station_name_buffer.len - 1,
         },
         .departure_screen_state = .{
             .platform = std.ArrayListUnmanaged(u8).initBuffer(&platform_buffer),

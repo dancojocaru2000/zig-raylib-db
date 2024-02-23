@@ -13,7 +13,9 @@ pub const HSSuggestion = struct {
 };
 
 pub const HomeScreenState = struct {
+    mutex: std.Thread.Mutex = .{},
     station_name: std.ArrayListUnmanaged(u8),
+    station_name_max_len: usize,
     fetch_thread: ?std.Thread = null,
     suggestions: []HSSuggestion = &.{},
     selection_idx: i8 = 0,
